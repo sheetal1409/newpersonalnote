@@ -2,7 +2,7 @@ import React from "react"
 
 
 export default function ListItem(props) {
-    const [notes, setNotes] = React.useState(props.addNote.length)
+    const notes = props.addNote.length
     const baseColor = "#ece8df"
     const [iconColors, setIconColors] = React.useState(Array.from(notes).fill(baseColor));
 
