@@ -2,6 +2,7 @@ import React from "react"
 import './App.css';
 import ListItem from "./ListItems"
 
+// App
 function App() {
 
     const [addNote, setAddNote] = React.useState([])
