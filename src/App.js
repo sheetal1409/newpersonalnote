@@ -1,118 +1,134 @@
 import React from "react"
 import './App.css';
-import notes from "./data";
 import ListItem from "./ListItems"
 
 function App() {
 
+    const [addNote, setAddNote] = React.useState([])
+    const [flag, setFlag] = React.useState(false);
+    const [noteItem, setNoteItem] = React.useState("")
+
+    React.useEffect(() => {
+        fetch("http://localhost:8000/notes")
+            .then((response) => {
+                return response.json()
+            })
+            .then((data) => setAddNote(data))
+    }, [flag])
+
+    // Adding Pagination 
+    const [currentPage, setCurrentPage] = React.useState(1)
+    const itemsPerPage = 3
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    let currentItems = addNote.slice(startIndex, endIndex)
+    const totalPages = Math.ceil(addNote.length / itemsPerPage)
 
 
 
-  const [addNote, setAddNote] = React.useState(notes)
-
-
-  const [noteItem, setNoteItem] = React.useState("")
-  const [itemNullNote, setItemNullNote] = React.useState(false)
-
-  const [currentPage, setCurrentPage] = React.useState(1)
-  const itemsPerPage = 3
-
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentItems = addNote.slice(startIndex, endIndex)
-
-  const totalPages = Math.ceil(addNote.length / itemsPerPage)
-
-  function handleNoteItem(event) {
-    setNoteItem(event.target.value)
-  }
-
-  function handleAddNote() {
-    if (noteItem === "") {
-      setItemNullNote(true)
+    function handlePreviousPage() {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1)
+        }
     }
-    else {
-      const newNote = {
-        id: addNote.length + 1,
-        item: noteItem,
-        done: false
-      }
-      setAddNote([...addNote, newNote])
-      setNoteItem("")
-      setItemNullNote(false)
-
-    }
-
-  }
-  // React.useEffect(function () {
-  //   console.log(addNote)
-  // }, [addNote])
-
-
-
-  function deleteNote(id) {
-    // id is index 
-    if (currentPage > 1) {
-      id = id + ((currentPage - 1) * itemsPerPage)
+    function handleNextPage() {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1)
+        }
     }
 
 
-    setAddNote(prevNotes => {
-      return [...prevNotes.slice(0, id), ...prevNotes.slice(id + 1)]
-    })
-  }
-
-
-  function handleDone(id) {
-
-    let doneNote = [...addNote]
-    if (currentPage > 1) {
-      id = id + ((currentPage - 1) * itemsPerPage)
+    if (currentItems.length === 0) {
+        handlePreviousPage()
     }
 
 
-    for (var i = 0; i < doneNote.length; i++) {
-      if (i === id) {
-        doneNote[i].done = true
-        break
-      }
+    // Copying input text value as note Item
+    function handleNoteItem(event) {
+        setNoteItem(event.target.value)
+    }
+    // Upon button click, adding new note item to items list db
+
+    function handleAddNote() {
+        const newNote = {
+            id: Math.ceil(Math.random() * 100),
+            item: noteItem,
+            done: false
+        }
+        fetch("http://localhost:8000/notes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(newNote)
+        })
+            .then((response) => {
+                return response.json()
+            })
+            .then((data) => setFlag((flag) => flag = !flag))
+        setNoteItem("")
     }
 
-    setAddNote([...doneNote])
+    function handleDone(id) {
+
+        let doneNote
+        for (var i = 0; i < addNote.length; i++) {
+            if (addNote[i].id === id) {
+                doneNote = addNote[i]
+            }
+        }
+        doneNote = { ...doneNote, done: !doneNote.done }
+
+        fetch("http://localhost:8000/notes/" + id, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(doneNote)
+        })
+            .then((response) => {
+                return response.json()
+            })
+            .then((data) => setFlag((flag) => flag = !flag))
 
 
-  }
-  function handlePreviousPage() {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1)
+
+
     }
-  }
 
-  function handleNextPage() {
+    function deleteNote(id) {
 
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1)
+        fetch("http://localhost:8000/notes/" + id, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+            },
+
+        })
+            .then((response) => {
+                return response.json()
+            })
+            .then((data) => setFlag((flag) => flag = !flag))
     }
-  }
-  return (
-    <div className="App">
-      <header className="App-header">
-        Notes
-      </header>
-      <section>
-        <input className="noteInput" type="text" placeholder={itemNullNote ? 'Enter Item to add' : 'Add notes...'} maxLength={50} value={noteItem} onChange={handleNoteItem} />
-        <button className="noteAddButton" onClick={handleAddNote} >Add Note</button>
-      </section>
-      <h3 style={{ color: 'red' }}>Displaying notes from page {currentPage}</h3>
-      <section>
-        <ListItem addNote={currentItems} onClick={deleteNote} handleDone={handleDone} />
-      </section>
+    return (
+        <div className="App">
+            <header className="App-header">
+                Notes
+            </header>
+            <section>
+                <input className="noteInput" type="text" maxLength={50} value={noteItem} onChange={handleNoteItem} />
+                <button className="noteAddButton" onClick={handleAddNote} >Add Note</button>
+            </section>
+            <h3 style={{ color: 'red' }}>Displaying notes from page {totalPages === 0 ? 0 : currentPage}</h3>
+            <section>
+                <ListItem addNote={currentItems} onClick={deleteNote} handleDone={handleDone} />
+            </section>
 
-      <button onClick={handlePreviousPage}>Previous</button>
-      <span className="totalPages">--Total Page:{totalPages}--</span>
-      <button onClick={handleNextPage}>Next</button>
-    </div>
-  );
+            <button onClick={handlePreviousPage}>Previous</button>
+            <span className="totalPages">--Total Page:{totalPages}--</span>
+            <button onClick={handleNextPage}>Next</button>
+        </div>
+    );
 }
 
 export default App;
